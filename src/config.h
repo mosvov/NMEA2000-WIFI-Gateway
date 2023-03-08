@@ -6,13 +6,13 @@
 
 // Hardware GPIO pin allocations
 
-constexpr gpio_num_t kCanRxPin = GPIO_NUM_25;
-constexpr gpio_num_t kCanTxPin = GPIO_NUM_26;
-constexpr gpio_num_t kCanLedEnPin = GPIO_NUM_27;
-constexpr gpio_num_t kBlueLedPin = GPIO_NUM_2;
-constexpr gpio_num_t kYellowLedPin = GPIO_NUM_4;
-constexpr gpio_num_t kRedLedPin = GPIO_NUM_5;
-constexpr gpio_num_t kHallInputPin = GPIO_NUM_18;
+constexpr gpio_num_t kCanRxPin = GPIO_NUM_7;
+constexpr gpio_num_t kCanTxPin = GPIO_NUM_5;
+constexpr gpio_num_t kCanLedEnPin = GPIO_NUM_19;
+constexpr gpio_num_t kBlueLedPin = GPIO_NUM_19;
+constexpr gpio_num_t kYellowLedPin = GPIO_NUM_19;
+constexpr gpio_num_t kRedLedPin = GPIO_NUM_19;
+constexpr gpio_num_t kHallInputPin = GPIO_NUM_19;
 
 // PWM channels for the LEDs
 
@@ -41,4 +41,4 @@ constexpr char kWiFiCaptivePortalPassword[] = "abcdabcd";
 constexpr size_t kMaxNMEA2000MessageSeasmartSize = 500;
 constexpr size_t kMaxNMEA0183MessageSize = 200;
 
-#endif // SH_WG_CONFIG_H_
+#endif  // SH_WG_CONFIG_H_
