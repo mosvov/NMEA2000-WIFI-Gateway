@@ -20,6 +20,8 @@
 #include "can_frame.h"
 #include "concatenate_strings.h"
 #include "config.h"
+#include "driver/temp_sensor.h"  //legacy esp32 temp sensor driver. https://github.com/espressif/esp-idf/blob/master/components/driver/test_apps/legacy_rtc_temp_driver/main/test_rtc_temp_driver.c
+#include "eh_display.h"
 #include "filter_transform.h"
 #include "firmware_info.h"
 #include "n2k_nmea0183_transform.h"
@@ -29,6 +31,7 @@
 #include "sensesp/net/discovery.h"
 #include "sensesp/net/http_server.h"
 #include "sensesp/net/networking.h"
+#include "sensesp/sensors/sensor.h"
 #include "sensesp/system/lambda_consumer.h"
 #include "sensesp/system/led_blinker.h"
 #include "sensesp/system/ui_output.h"
@@ -96,6 +99,7 @@ CheckboxConfig *checkbox_config_translate_to_nmea0183;
 PortConfig *port_config_nmea0183_tcp_tx;
 HostPortConfig *port_config_nmea0183_tcp_client;
 PortConfig *port_config_nmea0183_udp_tx;
+Adafruit_ST7735 *display;
 
 UIOutput<String> ui_output_firmware_name("Firmware name", kFirmwareName,
                                          "Firmware", 100);
@@ -544,6 +548,15 @@ void SetupUIComponents() {
       "Broadcast NMEA 0183 and SeaSmart.Net data over UDP.", 1900);
 }
 
+void initTempSensor() {
+  temp_sensor_config_t temp_sensor = TSENS_CONFIG_DEFAULT();
+  // TSENS_DAC_L2 is default   L4(-40℃ ~ 20℃), L2(-10℃ ~ 80℃) L1(20℃ ~ 100℃)
+  // L0(50℃ ~ 125℃)
+  temp_sensor.dac_offset = TSENS_DAC_L2;
+  temp_sensor_set_config(temp_sensor);
+  temp_sensor_start();
+}
+
 // The setup function performs one-time application initialization.
 void setup() {
 #ifndef SERIAL_DEBUG_DISABLED
@@ -627,6 +640,39 @@ void setup() {
       [](const tN2kMsg &n2k_msg) { SetSystemTime(n2k_msg); }));
 
   SetupConnections();
+  // Init internal temp sensor
+  initTempSensor();
+
+  auto *InternalTemp = new RepeatSensor<float>(1000, []() {
+    float InternalTemp = 0;
+    temp_sensor_read_celsius(&InternalTemp);
+    return InternalTemp;
+  });
+
+  // Initialize the OLED display
+  bool display_present = InitializeST7735(&app, sensesp_app, &display);
+
+  if (display_present) {
+    // Add display updaters
+
+    app.onRepeat(1000, []() {
+      String ip = WiFi.localIP().toString();
+      ip.remove(0, 3);
+      PrintValue(display, 1, "IP", ip);
+      PrintValue(display, 2, "UPT", millis() / 1000);
+      PrintValue(display, 3, "C_RX", can_frame_rx_counter);
+      PrintValue(display, 4, "C_TX", can_frame_tx_counter);
+    });
+
+    // tank_a_volume->connect_to(new LambdaConsumer<float>(
+    //    [](float value) { PrintValue(display, 2, "Tank A", 100 * value); }));
+
+    // tacho_1_frequency->connect_to(new LambdaConsumer<float>(
+    //    [](float value) { PrintValue(display, 3, "RPM 1", 60 * value); }));
+
+    InternalTemp->connect_to(new LambdaConsumer<float>(
+        [](float value) { PrintValue(display, 5, "In Temp", value); }));
+  }
 
   app.onRepeat(1000, []() {
     debugD("Uptime: %lu, CAN RX: %d CAN TX: %d", millis() / 1000,
